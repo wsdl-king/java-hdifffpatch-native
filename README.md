@@ -12,4 +12,6 @@ java 调用本地方法,基于hdiffpatch完成二进制文件拆分的代码
 
 然后生成libhello.so,将此文件加入到java文件的lib下
 
+wait  thank u
+
   
