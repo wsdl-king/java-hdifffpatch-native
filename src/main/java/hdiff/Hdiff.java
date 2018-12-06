@@ -14,6 +14,6 @@ public class Hdiff {
     public native int hdiff(String oldFilePath, String newFilePath, String diffFilePath);
 
     public static void main(String[] args) {
-        new Hdiff().hdiff("/home/qiwenshuai/zhoubao2","/home/qiwenshuai/zhoubao","/home/qiwenshuai/zhoubao3");  // invoke the native method
+        new Hdiff().hdiff("/home/qiwenshuai/B","/home/qiwenshuai/A","/home/qiwenshuai/C");  // invoke the native method
     }
 }

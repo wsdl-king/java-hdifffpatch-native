@@ -13,7 +13,7 @@ public class Hpatch {
     public native int hpatch(String oldFilePath, String diffFilePath, String newFilePath);
 
     public static void main(String[] args) {
-        new Hpatch().hpatch("123", "123", "123");
+        new Hpatch().hpatch("/home/qiwenshuai/B", "/home/qiwenshuai/C", "/home/qiwenshuai/E");
     }
 
 
