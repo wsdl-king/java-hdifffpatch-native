@@ -49,13 +49,10 @@ using namespace std;
 
 void readFile(std::vector<TByte>& data,const char* fileName){
     std::ifstream file(fileName,std::ios::in | std::ios::binary | std::ios::ate);
-      printf("fileName = %s \n",fileName);
-     printf("fileName = %s \n",fileName);
-     assert(file);
+    assert(file);
     file.seekg(0,std::ios::end);
      std::streampos file_length=file.tellg();
-     std::cout<<"file size:"<<std::endl<<file_length<<std::endl;
-    printf("fileName = %d \n",file.is_open());
+    printf("fileopen = %d \n",file.is_open());
     file.seekg(0,std::ios::beg);
     size_t needRead=(size_t)file_length;
     if ((file_length<0)||((std::streamsize)needRead!=(std::streamsize)file_length)) {
@@ -91,7 +88,6 @@ int genpatch(int argc, char * argv[]){
     std::vector<TByte> newData; readFile(newData,newFileName);
     const TUInt oldDataSize=oldData.size();
     const TUInt newDataSize=newData.size();
-
     std::vector<TByte> diffData;
     diffData.push_back((TByte)newDataSize);
     diffData.push_back((TByte)(newDataSize>>8));
@@ -115,6 +111,8 @@ int genpatch(int argc, char * argv[]){
     TByte* newData_begin=0; if (!newData.empty()) newData_begin=&newData[0];
     const TByte* oldData_begin=0; if (!oldData.empty()) oldData_begin=&oldData[0];
     clock_t time1=clock();
+     std::cout<<"filedata1:"<<std::endl<<newData_begin<<std::endl;
+
     create_diff(newData_begin,newData_begin+newDataSize,oldData_begin, oldData_begin+oldDataSize, diffData);
     clock_t time2=clock();
     if (!check_diff(newData_begin,newData_begin+newDataSize,oldData_begin,oldData_begin+oldDataSize, &diffData[0]+kNewDataSize, &diffData[0]+diffData.size())){
