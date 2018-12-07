@@ -68,6 +68,9 @@ g++    -fPIC -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux"    -shared -o l
 
 
 鸣谢 
-housisong@gmail.com 
+housisong@gmail.com
+ 
+github 传送门: https://github.com/sisong/HDiffPatch
+
 yanghui1986527@gmail.com
   
