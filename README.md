@@ -1,5 +1,6 @@
 # java-hdifffpatch-native
 java 调用本地方法,基于hdiffpatch完成二进制文件拆分的代码
+
 ---- 以下命令均在 ../src/main/java/cpp 目录下完成
 
 <h2>1.helloworld</h2>
