@@ -13,7 +13,7 @@ public class Hpatch {
     public native int hpatch(String oldFilePath, String diffFilePath, String newFilePath);
 
     public static void main(String[] args) {
-        new Hpatch().hpatch("/home/qiwenshuai/B", "/home/qiwenshuai/C", "/home/qiwenshuai/E");
+        new Hpatch().hpatch("/home/qiwenshuai/chafen/A0/v0.9.tar", "/home/qiwenshuai/diff.patch", "/home/qiwenshuai/new.tar");
     }
 
 

@@ -1,11 +1,8 @@
-//
-//  patch.h
-//  HPatch
+//patch.h
 //
 /*
- This is the HPatch copyright.
- 
- Copyright (c) 2012-2014 HouSisong All Rights Reserved.
+ The MIT License (MIT)
+ Copyright (c) 2012-2017 HouSisong
  
  Permission is hereby granted, free of charge, to any person
  obtaining a copy of this software and associated documentation
@@ -31,58 +28,123 @@
 
 #ifndef HPatch_patch_h
 #define HPatch_patch_h
+#include "patch_types.h"
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
-    
-#define hpatch_BOOL   int
-#define hpatch_FALSE  0
-    
-//if patch false return hpatch_FALSE
+
+//  all patch*() functions do not allocate memory
+
+//generate newData by patch(oldData + diff)
+//  serializedDiff create by create_diff()
 hpatch_BOOL patch(unsigned char* out_newData,unsigned char* out_newData_end,
-            const unsigned char* oldData,const unsigned char* oldData_end,
-            const unsigned char* serializedDiff,const unsigned char* serializedDiff_end);
+                  const unsigned char* oldData,const unsigned char* oldData_end,
+                  const unsigned char* serializedDiff,const unsigned char* serializedDiff_end);
 
-#ifdef __cplusplus
-}
+//default once I/O (read/write) max byte size
+#ifndef hpatch_kStreamCacheSize
+#define hpatch_kStreamCacheSize  (1024)
 #endif
+
+//patch by stream , used (hpatch_kStreamCacheSize*7 stack memory) for I/O cache
+//  serializedDiff create by create_diff()
+//  if use patch_stream_with_cache(), can passing more memory for I/O cache
+//  recommended load oldData in memory(and use mem_as_hStreamInput()),random access faster
+hpatch_BOOL patch_stream(const hpatch_TStreamOutput* out_newData,
+                         const hpatch_TStreamInput*  oldData,
+                         const hpatch_TStreamInput*  serializedDiff);
+
+//see patch_stream()
+//  limit (temp_cache_end-temp_cache)>=2048
+hpatch_BOOL patch_stream_with_cache(const hpatch_TStreamOutput* out_newData,
+                                    const hpatch_TStreamInput*  oldData,
+                                    const hpatch_TStreamInput*  serializedDiff,
+                                    unsigned char* temp_cache,unsigned char* temp_cache_end);
+
+
+//get compressedDiff info
+//  compressedDiff created by create_compressed_diff() or create_compressed_diff_stream()
+hpatch_BOOL getCompressedDiffInfo(hpatch_compressedDiffInfo* out_diffInfo,
+                                  const hpatch_TStreamInput* compressedDiff);
+//see getCompressedDiffInfo()
+hpatch_inline static hpatch_BOOL
+    getCompressedDiffInfo_mem(hpatch_compressedDiffInfo* out_diffInfo,
+                              const unsigned char* compressedDiff,
+                              const unsigned char* compressedDiff_end){
+        hpatch_TStreamInput  diffStream;
+        mem_as_hStreamInput(&diffStream,compressedDiff,compressedDiff_end);
+        return getCompressedDiffInfo(out_diffInfo,&diffStream);
+    }
 
     
-//patch_stream()  patch by stream
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+//patch with decompress plugin, used (hpatch_kStreamCacheSize*5 stack memory) + (decompress*4 used memory)
+//  compressedDiff create by create_compressed_diff() or create_compressed_diff_stream()
+//  decompressPlugin can null when no compressed data in compressedDiff
+//  if use patch_decompress_with_cache(), can passing larger memory cache to optimize speed;
+//   or recommended load oldData in memory(and use mem_as_hStreamInput()) to optimize speed.
+hpatch_BOOL patch_decompress(const hpatch_TStreamOutput* out_newData,
+                             const hpatch_TStreamInput*  oldData,
+                             const hpatch_TStreamInput*  compressedDiff,
+                             hpatch_TDecompress* decompressPlugin);
 
-//hpatch_StreamPos_t for support big file
-#ifdef _MSC_VER
-    typedef unsigned __int64        hpatch_StreamPos_t;
-#else
-    typedef unsigned long long      hpatch_StreamPos_t;
-#endif
-
-    typedef void* hpatch_TStreamInputHandle;
-
-    typedef struct hpatch_TStreamInput{
-        hpatch_TStreamInputHandle   streamHandle;
-        hpatch_StreamPos_t          streamSize;
-        void                        (*read)  (hpatch_TStreamInputHandle streamHandle,const hpatch_StreamPos_t readFromPos,
-                                              unsigned char* out_data,unsigned char* out_data_end);
-    } hpatch_TStreamInput;
     
-    typedef struct hpatch_TStreamOutput{
-        hpatch_TStreamInputHandle   streamHandle;
-        hpatch_StreamPos_t          streamSize;
-        void                        (*write)  (hpatch_TStreamInputHandle streamHandle,const hpatch_StreamPos_t writeToPos,
-                                               const unsigned char* data,const unsigned char* data_end);
-                                               //first writeToPos==0; and next writeToPos=writeToPos+(data_end-data)
-    } hpatch_TStreamOutput;
+//ON: for patch_decompress_with_cache(), preparatory load part of oldData into cache,
+//  cache memory size (temp_cache_end-temp_cache) the larger the better for large oldData file
+#define _IS_NEED_CACHE_OLD_BY_COVERS
 
-hpatch_BOOL patch_stream(const struct hpatch_TStreamOutput* out_newData,
-                         const struct hpatch_TStreamInput*  oldData,
-                         const struct hpatch_TStreamInput*  serializedDiff);
+//see patch_decompress()
+//  use larger memory cache to optimize speed
+//  limit (temp_cache_end-temp_cache)>=2048
+hpatch_BOOL patch_decompress_with_cache(const hpatch_TStreamOutput* out_newData,
+                                        const hpatch_TStreamInput*  oldData,
+                                        const hpatch_TStreamInput*  compressedDiff,
+                                        hpatch_TDecompress* decompressPlugin,
+                                        unsigned char* temp_cache,unsigned char* temp_cache_end);
+
+//see patch_decompress(), used (hpatch_kStreamCacheSize*5 stack memory) + (decompress*2 used memory)
+//  write newData twice and read newData once,slower than patch_decompress,but memroy requires to be halved.
+//  recommended used in limited memory environment
+hpatch_BOOL patch_decompress_repeat_out(const hpatch_TStreamOutput* repeat_out_newData,
+                                        hpatch_TStreamInput*        in_newData,//streamSize can set 0
+                                        const hpatch_TStreamInput*  oldData,
+                                        const hpatch_TStreamInput*  compressedDiff,
+                                        hpatch_TDecompress*         decompressPlugin);
+
+//see patch_decompress()
+hpatch_inline static hpatch_BOOL
+    patch_decompress_mem(unsigned char* out_newData,unsigned char* out_newData_end,
+                         const unsigned char* oldData,const unsigned char* oldData_end,
+                         const unsigned char* compressedDiff,const unsigned char* compressedDiff_end,
+                         hpatch_TDecompress* decompressPlugin){
+        hpatch_TStreamOutput out_newStream;
+        hpatch_TStreamInput  oldStream;
+        hpatch_TStreamInput  diffStream;
+        mem_as_hStreamOutput(&out_newStream,out_newData,out_newData_end);
+        mem_as_hStreamInput(&oldStream,oldData,oldData_end);
+        mem_as_hStreamInput(&diffStream,compressedDiff,compressedDiff_end);
+        return patch_decompress(&out_newStream,&oldStream,&diffStream,decompressPlugin);
+    }
+    
+    typedef struct hpatch_TCoverList{
+        hpatch_TCovers* ICovers;
+    //private:
+        unsigned char _buf[hpatch_kStreamCacheSize*4];
+    } hpatch_TCoverList;
+    
+hpatch_inline static
+void        hpatch_coverList_init(hpatch_TCoverList* coverList) {
+                                  assert(coverList!=0); memset(coverList,0,sizeof(*coverList)-sizeof(coverList->_buf)); }
+hpatch_BOOL hpatch_coverList_open_serializedDiff(hpatch_TCoverList*         out_coverList,
+                                                 const hpatch_TStreamInput* serializedDiff);
+hpatch_BOOL hpatch_coverList_open_compressedDiff(hpatch_TCoverList*         out_coverList,
+                                                 const hpatch_TStreamInput* compressedDiff,
+                                                 hpatch_TDecompress*        decompressPlugin);
+hpatch_inline static
+void        hpatch_coverList_close(hpatch_TCoverList* coverList) {
+                                   if ((coverList!=0)&&(coverList->ICovers)){
+                                       coverList->ICovers->close(coverList->ICovers);
+                                       hpatch_coverList_init(coverList); } }
 
 #ifdef __cplusplus
 }

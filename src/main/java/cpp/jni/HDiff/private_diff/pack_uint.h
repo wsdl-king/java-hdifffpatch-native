@@ -1,10 +1,8 @@
-//
-//  pack_uint.h
-//  create by housisong
+//pack_uint.h
 //
 /*
- Copyright (c) 2012-2014 HouSisong All Rights Reserved.
- (The MIT License)
+ The MIT License (MIT)
+ Copyright (c) 2012-2017 HouSisong
 
  Permission is hereby granted, free of charge, to any person
  obtaining a copy of this software and associated documentation
@@ -32,38 +30,32 @@
 #define __PACK_UINT_H_
 
 #include <vector>
+#include "../../HPatch/patch_types.h" //hpatch_packUIntWithTag
+#include <stdexcept>  //std::runtime_error
+namespace hdiff_private{
 
-//变长正整数编码方案(x bit额外类型标志位,x<=7),从高位开始输出1--n byte:
-// x0*  7-x bit
-// x1* 0*  7+7-x bit
-// x1* 1* 0*  7+7+7-x bit
-// x1* 1* 1* 0*  7+7+7+7-x bit
-// x1* 1* 1* 1* 0*  7+7+7+7+7-x bit
-// ...
-template<class TUInt>
-static void packUIntWithTag(std::vector<unsigned char>& out_code,TUInt iValue,int highBit,const int kTagBit){//写入并前进指针.
-    const int kPackMaxTagBit=7;
-    assert((0<=kTagBit)&&(kTagBit<=kPackMaxTagBit));
-    assert((highBit>>kTagBit)==0);
-    const int kMaxPackUIntByteSize=(kPackMaxTagBit+sizeof(TUInt)*8+6)/7;
-    const TUInt kMaxValueWithTag=(1<<(7-kTagBit))-1;
-
-    unsigned char codeBuf[kMaxPackUIntByteSize];
+template<class _UInt>
+inline static void packUIntWithTag(std::vector<unsigned char>& out_code,_UInt uValue,
+                                   int highTag,const int kTagBit){
+    unsigned char  codeBuf[hpatch_kMaxPackedUIntBytes];
     unsigned char* codeEnd=codeBuf;
-    while (iValue>kMaxValueWithTag) {
-        *codeEnd=iValue&((1<<7)-1); ++codeEnd;
-        iValue>>=7;
-    }
-    out_code.push_back((unsigned char)( (highBit<<(8-kTagBit)) | iValue | (((codeBuf!=codeEnd)?1:0)<<(7-kTagBit))  ));
-    while (codeBuf!=codeEnd) {
-        --codeEnd;
-        out_code.push_back((*codeEnd) | (((codeBuf!=codeEnd)?1:0)<<7));
-    }
+    if (!hpatch_packUIntWithTag(&codeEnd,codeBuf+hpatch_kMaxPackedUIntBytes,uValue,highTag,kTagBit))
+        throw std::runtime_error("packUIntWithTag<_UInt>() hpatch_packUIntWithTag() error!");
+    out_code.insert(out_code.end(),codeBuf,codeEnd);
 }
 
-template<class TUInt>
-inline static void packUInt(std::vector<unsigned char>& out_code,TUInt iValue){
-    packUIntWithTag(out_code,iValue,0,0);
+template<class _UInt>
+inline static void packUInt(std::vector<unsigned char>& out_code,_UInt uValue){
+    packUIntWithTag(out_code,uValue,0,0);
 }
 
+    
+inline static void pushBack(std::vector<unsigned char>& out_buf,const unsigned char* data,const unsigned char* data_end){
+    out_buf.insert(out_buf.end(),data,data_end);
+}
+inline static void pushBack(std::vector<unsigned char>& out_buf,const std::vector<unsigned char>& data){
+    out_buf.insert(out_buf.end(),data.begin(),data.end());
+}
+    
+}//namespace hdiff_private
 #endif //__PACK_UINT_H_
